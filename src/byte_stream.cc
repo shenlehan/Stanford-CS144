@@ -3,11 +3,10 @@
 
 using namespace std;
 
-ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), error_( false ),
-                                                buffer_(), closed_( false ), popped_( 0 ), pushed_( 0 ){}
+ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), buffer_() {}
 
 // Push data to stream, but only as much as available capacity allows.
-void Writer::push( string data )
+void Writer::push( string &data )
 {
   // Your code here (and in each method below)
   // debug( "Writer::push({}) not yet implemented", data );
