@@ -1,12 +1,24 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include <utility>
+#include <vector>
 
 class Reassembler
 {
 public:
   // Construct Reassembler to write into given ByteStream.
-  explicit Reassembler( ByteStream&& output ) : output_( std::move( output ) ) {}
+  explicit Reassembler( ByteStream&& output )
+    : output_( std::move( output ) )
+    , first_unpopped_idx( 0 )
+    , first_unassembled_idx( 0 )
+    , first_unaccepted_idx( output_.writer().available_capacity() )
+    , buffer_( output_.writer().available_capacity(), '\0' )
+    , bitmap_( output_.writer().available_capacity(), false )
+    , buffer_capacity_( output_.writer().available_capacity() )
+    , eof_idx_( 0 )
+    , has_eof_( false )
+  {}
 
   /*
    * Insert a new substring to be reassembled into a ByteStream.
@@ -28,7 +40,7 @@ public:
    *
    * The Reassembler should close the stream after writing the last byte.
    */
-  void insert( uint64_t first_index, std::string data, bool is_last_substring );
+  void insert( uint64_t first_index, const std::string& data, bool is_last_substring );
 
   // How many bytes are stored in the Reassembler itself?
   // This function is for testing only; don't add extra state to support it.
@@ -43,4 +55,13 @@ public:
 
 private:
   ByteStream output_;
+  uint64_t first_unpopped_idx { 0 };
+  uint64_t first_unassembled_idx;
+  uint64_t first_unaccepted_idx;
+  std::string buffer_;
+  std::vector<bool> bitmap_;
+  uint64_t buffer_capacity_;
+  void try_push();
+  uint64_t eof_idx_;
+  bool has_eof_;
 };
