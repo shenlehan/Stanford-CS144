@@ -8,12 +8,13 @@ class TCPReceiver
 {
 public:
   // Construct with given Reassembler
-  explicit TCPReceiver( Reassembler&& reassembler ) :
-    reassembler_( std::move( reassembler ) ),
-    zero_point( 0 ),
-    checkpoint( 0 ),
-    ISN_inited( false )
-    {}
+  explicit TCPReceiver( Reassembler&& reassembler )
+    : reassembler_( std::move( reassembler ) )
+    , zero_point( 0 )
+    , checkpoint( 0 )
+    , ISN_inited( false )
+    , window_size( reassembler_.writer().available_capacity() )
+  {}
 
   /*
    * The TCPReceiver receives TCPSenderMessages, inserting their payload into the Reassembler
@@ -35,4 +36,5 @@ private:
   Wrap32 zero_point;
   uint64_t checkpoint;
   bool ISN_inited;
+  uint16_t window_size;
 };
