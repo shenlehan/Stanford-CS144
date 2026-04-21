@@ -54,6 +54,6 @@ TCPReceiverMessage TCPReceiver::send() const
     msg.ackno = Wrap32::wrap( abs_ackno, zero_point );
   }
   msg.RST = reader().has_error();
-  msg.window_size = std::min(writer().available_capacity(), (uint64_t)UINT16_MAX);
+  msg.window_size = std::min(writer().available_capacity(), static_cast<uint64_t>UINT16_MAX);
   return msg;
 }
