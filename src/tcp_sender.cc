@@ -23,7 +23,7 @@ void TCPSender::push( const TransmitFunction& transmit )
   // debug( "unimplemented push() called" );
   // (void)transmit;
 
-  size_t window_size = std::min( TCPConfig::MAX_PAYLOAD_SIZE, recv_windows_size_ == 0 ? 1 : recv_windows_size_ );
+  size_t window_size = recv_windows_size_ == 0 ? 1 : recv_windows_size_;
 
   while ( window_size > sequence_numbers_in_flight_ ) {
     TCPSenderMessage msg;
@@ -42,7 +42,8 @@ void TCPSender::push( const TransmitFunction& transmit )
       input_.reader().pop( actual_size );
     }
 
-    if ( !FIN_inited_ && !writer().is_closed() && msg.sequence_length() < available_space ) {
+    if ( !FIN_inited_ && writer().is_closed() && msg.sequence_length() < available_space
+         && reader().bytes_buffered() == 0 ) {
       msg.FIN = true;
       FIN_inited_ = true;
     }
@@ -51,10 +52,14 @@ void TCPSender::push( const TransmitFunction& transmit )
       break;
     }
 
+    if (writer().has_error()) {
+      msg.RST = true;
+    }
+
     sequence_numbers_in_flight_ += msg.sequence_length();
-    msg.seqno = next_seqno_;
+    msg.seqno = Wrap32::wrap( next_seqno_, isn_ );
     transmit( msg );
-    outstanding_segments_.push( msg );
+    outstanding_segments_.push_back( msg );
     if ( !timer_running_ ) {
       timer_running_ = true;
       timer_ms_ = 0;
@@ -73,14 +78,60 @@ TCPSenderMessage TCPSender::make_empty_message() const
   TCPSenderMessage msg;
   msg.FIN = false;
   msg.SYN = false;
-  msg.seqno = next_seqno_;
+  msg.seqno = Wrap32::wrap( next_seqno_, isn_ );
+  if (writer().has_error()) {
+    msg.RST = true;
+  }
   return msg;
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  debug( "unimplemented receive() called" );
-  (void)msg;
+  // debug( "unimplemented receive() called" );
+  if ( msg.RST ) { // error
+    writer().set_error();
+    return;
+  }
+  recv_windows_size_ = msg.window_size; // new window size
+  if ( !msg.ackno.has_value() ) {
+    return;
+  }
+
+  uint64_t msg_ackno_unwrap = msg.ackno->unwrap( isn_, next_seqno_ );
+  if ( msg_ackno_unwrap > next_seqno_ ) { // ackno shouldn't be that large~
+    return;
+  }
+
+  bool has_new_ackno = false;
+  if ( msg_ackno_unwrap > last_ackno_ ) {
+    has_new_ackno = true;
+  }
+
+  last_ackno_ = msg_ackno_unwrap > last_ackno_ ? msg_ackno_unwrap : last_ackno_;
+  while ( !outstanding_segments_.empty() ) {
+    TCPSenderMessage& seg = outstanding_segments_.front();
+
+    uint64_t seg_start = seg.seqno.unwrap( isn_, msg_ackno_unwrap );
+    uint64_t seg_end = seg_start + seg.sequence_length();
+
+    if ( seg_end <= last_ackno_ ) {
+      sequence_numbers_in_flight_ -= seg.sequence_length();
+      outstanding_segments_.pop_front();
+    } else {
+      break;
+    }
+  }
+
+  if ( has_new_ackno ) {
+    current_RTO_ = initial_RTO_ms_;
+    consecutive_retransmissions_ = 0;
+    if ( !outstanding_segments_.empty() ) {
+      timer_ms_ = 0;
+    } else {
+      timer_ms_ = 0;
+      timer_running_ = false;
+    }
+  }
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )

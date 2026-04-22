@@ -5,6 +5,7 @@
 #include "tcp_sender_message.hh"
 
 #include <functional>
+#include <list>
 #include <queue>
 
 class TCPSender
@@ -20,10 +21,12 @@ public:
     , SYN_inited_( false )
     , FIN_inited_( false )
     , next_seqno_( 0 )
+    , outstanding_segments_()
     , timer_running_( false )
     , timer_ms_( 0 )
     , current_RTO_( initial_RTO_ms )
     , consecutive_retransmissions_( 0 )
+    , last_ackno_ {}
   {}
 
   /* Generate an empty TCPSenderMessage */
@@ -58,10 +61,11 @@ private:
   uint64_t sequence_numbers_in_flight_;
   bool SYN_inited_;
   bool FIN_inited_;
-  Wrap32 next_seqno_;
-  std::queue<TCPSenderMessage> outstanding_segments_;
+  uint64_t next_seqno_;
+  std::list<TCPSenderMessage> outstanding_segments_;
   bool timer_running_;
   uint64_t timer_ms_;
   uint64_t current_RTO_;
   uint64_t consecutive_retransmissions_;
+  std::optional<uint64_t> last_ackno_;
 };
