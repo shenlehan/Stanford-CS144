@@ -45,7 +45,7 @@ void NetworkInterface::send_datagram( InternetDatagram dgram, const Address& nex
     frame.payload = serialize( dgram );
     transmit( frame );
   } else {
-    // broadcast to get address
+    // broadcast to get ethernet address
     EthernetHeader header {};
     header.type = EthernetHeader::TYPE_ARP;
     header.src = ethernet_address_;
@@ -62,13 +62,13 @@ void NetworkInterface::send_datagram( InternetDatagram dgram, const Address& nex
     frame.payload = serialize( msg );
 
     if ( !last_arp_request_.contains( ip_nxt_hop ) || now - last_arp_request_[ip_nxt_hop] >= 5000 ) {
-      while ( !datagrams_queue_[ip_nxt_hop].empty() ) {
+      while ( !datagrams_queue_[ip_nxt_hop].empty() ) { // clear outdated packets
         datagrams_queue_[ip_nxt_hop].pop();
       }
       last_arp_request_[ip_nxt_hop] = now;
-      transmit( frame );
+      transmit( frame ); // ask for new ethernet address
       datagrams_queue_[ip_nxt_hop].push( dgram );
-    } else if ( now - last_arp_request_[ip_nxt_hop] < 5000 ) {
+    } else if ( now - last_arp_request_[ip_nxt_hop] < 5000 ) { // our ethernet address is very new
       datagrams_queue_[ip_nxt_hop].push( dgram );
     }
   }

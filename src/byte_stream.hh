@@ -7,6 +7,8 @@
 class Reader;
 class Writer;
 
+// ByteStream maintains a buffer(buffer_)
+// reader() is the interface to read from it and writer() is to write to it
 class ByteStream
 {
 public:
