@@ -4,6 +4,7 @@
 #include "ethernet_frame.hh"
 #include "ipv4_datagram.hh"
 
+#include <map>
 #include <memory>
 #include <queue>
 
@@ -39,6 +40,12 @@ public:
     virtual ~OutputPort() = default;
   };
 
+  struct ArpCache
+  {
+    EthernetAddress ethernet_address;
+    uint64_t learned_at_ms;
+  };
+
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses
   NetworkInterface( std::string_view name,
@@ -66,6 +73,8 @@ public:
   OutputPort& output() { return *port_; }
   std::queue<InternetDatagram>& datagrams_received() { return datagrams_received_; }
 
+  void flush( uint32_t sender_ip, EthernetAddress sender_ether );
+
 private:
   // Human-readable name of the interface
   std::string name_;
@@ -82,4 +91,9 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+  std::map<uint32_t, std::queue<InternetDatagram>> datagrams_queue_ {};
+  uint64_t ms_tick_;
+  std::map<uint32_t, uint64_t> last_arp_request_ {};
+  std::map<EthernetAddress, std::optional<uint32_t>> ether_to_ip_ {};
+  std::map<uint32_t, std::optional<ArpCache>> ip_to_ether_ {};
 };
