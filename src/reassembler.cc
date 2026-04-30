@@ -32,6 +32,14 @@ void Reassembler::try_push()
 void Reassembler::insert( uint64_t first_index, const string& data, bool is_last_substring )
 {
   // debug( "unimplemented insert({}, {}, {}) called", first_index, data, is_last_substring );
+  /*
+   * stream start         first unpopped           first unassembled                        first unaccepted
+   *  |                      |                          |                                        |
+   *  +----------------------+--------------------------+----------------------------------------+-------
+   *  |    popped already    |  bufferd in ByteStream   |  buffered in Reassembler(unassembled)  | unaccepted
+   *  +----------------------+--------------------------+----------------------------------------+-------
+   *
+   */
   first_unpopped_idx = first_unassembled_idx - output_.reader().bytes_buffered();
   first_unaccepted_idx = first_unpopped_idx + buffer_capacity_;
   uint64_t start_idx = std::max( first_index, first_unassembled_idx );

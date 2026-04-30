@@ -91,7 +91,7 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
-  std::map<uint32_t, std::queue<InternetDatagram>> datagrams_queue_ {};
+  std::map<uint32_t, std::queue<InternetDatagram>> datagrams_queue_ {}; // we sort the datagrams(to be sent) by their next_hop_ip
   uint64_t ms_tick_;
   std::map<uint32_t, uint64_t> last_arp_request_ {};
   std::map<EthernetAddress, std::optional<uint32_t>> ether_to_ip_ {};
